@@ -41,10 +41,13 @@ def main() -> int:
     news = NewsFilter(settings.news_url, settings.news_currencies, settings.news_pause_minutes)
     sizer = PositionSizer(client.mt5)
 
-    if not client.connect():
-        return 1
-
     try:
+        while RUNNING and not client.connect():
+            LOGGER.error("MT5 is not ready; retrying in %s seconds", settings.poll_seconds)
+            time.sleep(settings.poll_seconds)
+        if not RUNNING:
+            return 1
+
         client.select_symbols(settings.symbols)
         while RUNNING:
             try:

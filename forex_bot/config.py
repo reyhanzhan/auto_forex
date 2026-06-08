@@ -35,6 +35,7 @@ class Settings:
     mt5_password: str | None
     mt5_server: str | None
     mt5_path: str | None
+    mt5_init_timeout_ms: int
     symbols: tuple[str, ...]
     risk_per_trade: float
     magic: int
@@ -81,6 +82,7 @@ class Settings:
             mt5_password=os.getenv("MT5_PASSWORD") or None,
             mt5_server=os.getenv("MT5_SERVER") or None,
             mt5_path=os.getenv("MT5_PATH") or None,
+            mt5_init_timeout_ms=int(os.getenv("MT5_INIT_TIMEOUT_MS", "120000")),
             symbols=symbols,
             risk_per_trade=float(os.getenv("BOT_RISK_PER_TRADE", "0.01")),
             magic=int(os.getenv("BOT_MAGIC", "240515")),

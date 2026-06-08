@@ -44,6 +44,7 @@ class MT5Client:
             kwargs["password"] = self.settings.mt5_password
         if self.settings.mt5_server:
             kwargs["server"] = self.settings.mt5_server
+        kwargs["timeout"] = self.settings.mt5_init_timeout_ms
 
         if self.mt5.initialize(**kwargs):
             self._connected = True
