@@ -128,7 +128,8 @@ journalctl -u auto-forex -f
 
 ```bash
 sudo npm install -g pm2
-pm2 start "xvfb-run -a wine C:\\Python310\\python.exe -m forex_bot.main" --name auto-forex --cwd /home/ubuntu/auto_forex
+chmod +x scripts/run_wine_bot.sh
+pm2 start ecosystem.config.js --only auto-forex
 pm2 save
 pm2 startup systemd
 pm2 logs auto-forex
