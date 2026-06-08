@@ -13,9 +13,14 @@ Fully automated Python 3.10+ MT5 demo-account bot for EURUSD, GBPUSD, and XAUUSD
 
 ## Important MT5/Linux Note
 
-The Python `MetaTrader5` package talks to a locally running MT5 terminal. On a Linux VPS, that normally means running the Windows MT5 terminal under Wine, often with `xvfb`, or using a Windows VPS. The bot code is Linux-service ready, but the MT5 terminal must be installed, logged into the demo account, and visible to the Python package on the same machine.
+The Python `MetaTrader5` package talks to a locally running MT5 terminal and is distributed as a Windows Python package. On a Linux VPS, do not run the bot with native Linux Python. Use one of these paths:
 
-## Local Install
+- Recommended for simplicity: use a Windows VPS and run `python -m forex_bot.main` beside the MT5 terminal.
+- Linux VPS path: run Windows Python, MT5 terminal, and the `MetaTrader5` package under Wine/Xvfb.
+
+The native Linux `systemd/auto-forex.service` is useful only if your environment provides a compatible MT5 bridge. For normal Ubuntu + Wine deployment, use `systemd/auto-forex-wine.service`.
+
+## Local Install On Windows
 
 ```bash
 python3.10 -m venv .venv
@@ -42,39 +47,48 @@ Broker symbol names can differ. If your broker uses suffixes, set for example:
 BOT_SYMBOLS=EURUSDm,GBPUSDm,XAUUSDm
 ```
 
-## Run Manually
+On Windows PowerShell, use:
+
+```powershell
+py -3.10 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+copy .env.example .env
+notepad .env
+```
+
+## Run Manually On Windows
 
 ```bash
 source .venv/bin/activate
 python -m forex_bot.main
 ```
 
-## Deploy On Ubuntu VPS
+## Deploy On Ubuntu VPS With Wine
 
 ```bash
 sudo apt update
-sudo apt install -y python3.10 python3.10-venv python3-pip git curl
+sudo apt install -y git curl wget xvfb wine64 winbind cabextract
 git clone <your-repo-url> /home/ubuntu/auto_forex
 cd /home/ubuntu/auto_forex
-python3.10 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
 cp .env.example .env
 nano .env
 ```
 
-### MT5 Under Wine
-
-Install Wine and a virtual display:
+Install Windows Python 3.10 under Wine:
 
 ```bash
-sudo dpkg --add-architecture i386
-sudo apt update
-sudo apt install -y wine64 wine32 xvfb winbind
+mkdir -p ~/installers
+cd ~/installers
+wget -O python-3.10.11-amd64.exe https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe
+xvfb-run -a wine python-3.10.11-amd64.exe /quiet InstallAllUsers=1 PrependPath=1 TargetDir=C:\\Python310 Include_pip=1
+cd /home/ubuntu/auto_forex
+xvfb-run -a wine C:\\Python310\\python.exe -m pip install --upgrade pip
+xvfb-run -a wine C:\\Python310\\python.exe -m pip install -r requirements.txt
 ```
 
-Install MT5 from your broker:
+Install MT5 from your broker or MetaQuotes:
 
 ```bash
 mkdir -p ~/mt5
@@ -83,7 +97,7 @@ wget -O mt5setup.exe "https://download.mql5.com/cdn/web/metaquotes.software.corp
 xvfb-run -a wine mt5setup.exe
 ```
 
-Start MT5 and log into the demo account once:
+Start MT5 and log into the demo account once. This may require VNC or another desktop session if your broker installer needs GUI interaction:
 
 ```bash
 xvfb-run -a wine ~/.wine/drive_c/Program\ Files/MetaTrader\ 5/terminal64.exe
@@ -91,10 +105,18 @@ xvfb-run -a wine ~/.wine/drive_c/Program\ Files/MetaTrader\ 5/terminal64.exe
 
 Then set `MT5_PATH` in `.env` to that terminal path. Keep in mind that exact Wine paths can vary depending on broker installer and Wine prefix.
 
-## Systemd
+Test import and connection bootstrap:
 
 ```bash
-sudo cp systemd/auto-forex.service /etc/systemd/system/auto-forex.service
+cd /home/ubuntu/auto_forex
+xvfb-run -a wine C:\\Python310\\python.exe -c "import MetaTrader5 as mt5; print(mt5.__version__)"
+xvfb-run -a wine C:\\Python310\\python.exe -m forex_bot.main
+```
+
+## Systemd On Ubuntu + Wine
+
+```bash
+sudo cp systemd/auto-forex-wine.service /etc/systemd/system/auto-forex.service
 sudo systemctl daemon-reload
 sudo systemctl enable auto-forex
 sudo systemctl start auto-forex
@@ -106,7 +128,7 @@ journalctl -u auto-forex -f
 
 ```bash
 sudo npm install -g pm2
-pm2 start ecosystem.config.js
+pm2 start "xvfb-run -a wine C:\\Python310\\python.exe -m forex_bot.main" --name auto-forex --cwd /home/ubuntu/auto_forex
 pm2 save
 pm2 startup systemd
 pm2 logs auto-forex
